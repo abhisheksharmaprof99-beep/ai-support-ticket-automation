@@ -1,0 +1,244 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "support-ticket",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "27444f11-3f4c-4522-9d37-d8a300b13a7a",
+      "name": "Webhook",
+      "webhookId": "6f4b7b18-8119-4609-891e-e9ccdc5b2989"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "AQ.Ab8RN6IlhJjCcvRUjbjga_5xxbp0W9S4ajF73ZnUGCugDrHiRQ"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Classify this customer message. Reply ONLY with JSON in this exact format: {\\\"category\\\": \\\"shipping\\\", \\\"urgency\\\": \\\"medium\\\"}. Message: {{ $json.body.body }}\"\n    }]\n  }]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "7b6224f0-c0e4-4da4-b0e3-215360799a48",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $input.first().json.candidates[0].content.parts[0].text;\nconst parsedData = JSON.parse(rawText);\nconst customerData = $('Webhook').first().json.body;\n\nreturn [{ json: { ...customerData, ...parsedData } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "5cff505c-7a0d-46a0-bfe9-d0374ac91f21",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "tableId": "ticket",
+        "dataToSend": "autoMapInputData"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "d6f4e6bf-8e2b-4ee3-95c6-96192b5b2dd2",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hpZr14MBTOKoJOb2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "efa438d8-4af1-4c52-8e48-9027ef1fa3fc",
+              "leftValue": "={{ $json.urgency }}",
+              "rightValue": "high",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        848,
+        0
+      ],
+      "id": "cc3bbeef-7274-409e-86e6-ae9846e71caa",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.customer_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "Thanks for reaching out! We've received your message and will get back to you soon.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1072,
+        96
+      ],
+      "id": "9432b5ff-5803-4a01-84c8-3c7fa1277025",
+      "name": "Send a message",
+      "webhookId": "459b2d95-1f38-4f2f-9ce2-8a032f79ea75",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "J5jO4OVm8qTfbsZt",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhisheksharma.prof.99@gmail.com",
+        "subject": "=Urgent ticket from {{$json.customer_email}}",
+        "emailType": "text",
+        "message": "=  Urgent ticket needs attention!\n  \n  From: {{$json.customer_email}}\n  Subject: {{$json.subject}}\n  Message: {{$json.body}}\n  Category: {{$json.category}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1072,
+        -55.5
+      ],
+      "id": "2517c79d-c0d0-4d54-8a18-a98605d7be9b",
+      "name": "Send a message1",
+      "webhookId": "0edf1982-de0c-44e0-925d-437a00557b6e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "J5jO4OVm8qTfbsZt",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "bdd76572-8370-4630-9b06-3950ec9eb1a4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "02e5b760a7a15e29070980e656bd2a74dc6332aca2c072f53fb92c334b468f5c"
+  },
+  "nodeGroups": [],
+  "id": "evTpkceBUDkRkEOn",
+  "tags": []
+}
